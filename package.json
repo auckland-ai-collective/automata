@@ -1,0 +1,30 @@
+{
+  "name": "automata",
+  "version": "0.1.0",
+  "description": "A general-purpose workbench for building, running, and observing cellular automata and agent-based models. Runs as an Electron app or standalone on the web.",
+  "author": "Sygnal",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:electron": "tsc --noEmit && vite build && node scripts/build-electron.mjs",
+    "electron": "electron .",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
