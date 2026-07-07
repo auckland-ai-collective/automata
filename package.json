@@ -1,6 +1,6 @@
 {
   "name": "automata",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A general-purpose workbench for building, running, and observing cellular automata and agent-based models. Runs as an Electron app or standalone on the web.",
   "author": "Sygnal",
   "license": "MIT",

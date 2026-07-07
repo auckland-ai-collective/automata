@@ -79,24 +79,37 @@ function num(p: Params, k: string): number {
   return p[k] as number;
 }
 
+/** Body spacing for the separation force: mice avoid overlapping this closely. */
+const PERSONAL_SPACE = 4;
+/** Strength of the short-range shove that keeps aggregating mice from merging. */
+const SEPARATION = 0.9;
+
 /**
  * Spatial hash for O(n) neighbour queries. Rebuilt each tick. Buckets are
- * sized to the crowding radius so a mouse only needs to scan its own and the
- * eight adjacent buckets to count everyone within range.
+ * sized to the largest query radius (the perception radius) so a mouse only
+ * needs to scan its own and the eight adjacent buckets to reach everyone in
+ * range — both the closer crowding radius and the wider perception radius.
  */
 class SpatialHash {
   private cell: number;
-  private cols: number;
+  private grid: number; // cells per side (square arena)
   private buckets: Map<number, Mouse[]> = new Map();
 
-  constructor(arena: number, radius: number) {
-    this.cell = Math.max(1, radius);
-    this.cols = Math.ceil(arena / this.cell) + 1;
+  constructor(arena: number, maxRadius: number) {
+    this.cell = Math.max(1, maxRadius);
+    this.grid = Math.ceil(arena / this.cell) + 1;
     // buckets built lazily in insert()
   }
 
   private key(cx: number, cy: number): number {
-    return cy * this.cols + cx;
+    return cy * this.grid + cx;
+  }
+
+  /** True if a cell coordinate is inside the grid — guards against the
+   *  border cells (cx = -1 etc.) whose keys would otherwise alias a real
+   *  cell on the opposite edge and pull in phantom neighbours. */
+  private inBounds(cx: number, cy: number): boolean {
+    return cx >= 0 && cy >= 0 && cx < this.grid && cy < this.grid;
   }
 
   insert(m: Mouse): void {
@@ -119,6 +132,7 @@ class SpatialHash {
     let count = 0;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
+        if (!this.inBounds(cx + dx, cy + dy)) continue;
         const b = this.buckets.get(this.key(cx + dx, cy + dy));
         if (!b) continue;
         for (const m of b) {
@@ -132,6 +146,37 @@ class SpatialHash {
     return count;
   }
 
+  /**
+   * Local centre of mass of mice within `radius` of (x,y), plus the count.
+   * Used to steer social attraction toward where the other mice actually are.
+   */
+  centroidNear(x: number, y: number, radius: number, selfId: number): { cx: number; cy: number; count: number } {
+    const r2 = radius * radius;
+    const bx = Math.floor(x / this.cell);
+    const by = Math.floor(y / this.cell);
+    let sx = 0;
+    let sy = 0;
+    let count = 0;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!this.inBounds(bx + dx, by + dy)) continue;
+        const b = this.buckets.get(this.key(bx + dx, by + dy));
+        if (!b) continue;
+        for (const m of b) {
+          if (m.id === selfId) continue;
+          const ddx = m.x - x;
+          const ddy = m.y - y;
+          if (ddx * ddx + ddy * ddy <= r2) {
+            sx += m.x;
+            sy += m.y;
+            count++;
+          }
+        }
+      }
+    }
+    return count > 0 ? { cx: sx / count, cy: sy / count, count } : { cx: x, cy: y, count: 0 };
+  }
+
   /** First matching mouse within radius, or null. */
   findNear(x: number, y: number, radius: number, selfId: number, filter: (m: Mouse) => boolean): Mouse | null {
     const r2 = radius * radius;
@@ -139,6 +184,7 @@ class SpatialHash {
     const cy = Math.floor(y / this.cell);
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
+        if (!this.inBounds(cx + dx, cy + dy)) continue;
         const b = this.buckets.get(this.key(cx + dx, cy + dy));
         if (!b) continue;
         for (const m of b) {
@@ -193,12 +239,17 @@ export const universe25: ProjectSpec<Universe25State> = {
     'space; no predators or disease. Population explodes, then social structure ' +
     'collapses: mothers neglect young, males split into violent aggressors and ' +
     'withdrawn "beautiful ones" who never mate, births cease, and the colony ' +
-    'dies out. The collapse here is emergent from local crowding rules, not ' +
-    'scripted. Blue = male, pink = female, white = "beautiful one", green = pup.',
+    'dies out. The collapse is emergent, not scripted. Crucially, "social pull" ' +
+    'makes the mice AGGREGATE voluntarily — Calhoun\'s key point that the sink is ' +
+    'social, not spatial: with pull on, the collapse recurs even in a huge pen, ' +
+    'because the mice crowd themselves regardless of empty space. Set pull to 0 ' +
+    'and enlarge the enclosure to see the colony instead disperse and fizzle out. ' +
+    'Blue = male, pink = female, white = "beautiful one", green = pup.',
 
   parameters: [
     { key: 'initialPairs', label: 'Initial breeding pairs', type: 'int', default: 4, min: 1, max: 32, step: 1, reinitOnChange: true },
-    { key: 'arena', label: 'Enclosure size', type: 'int', default: 260, min: 80, max: 500, step: 10, reinitOnChange: true, help: 'Side of the square pen. Space is the only limited resource.' },
+    { key: 'arena', label: 'Enclosure size', type: 'int', default: 260, min: 80, max: 2000, step: 10, reinitOnChange: true, help: 'Side of the square pen. With social pull on, size barely matters — the sink is social, not spatial.' },
+    { key: 'socialPull', label: 'Social pull', type: 'range', default: 0.35, min: 0, max: 2, step: 0.05, help: 'How strongly mice steer toward nearby mice. 0 = pure random walk (space limits crowding); high = voluntary aggregation (the behavioral sink even in infinite space).' },
     { key: 'lifespan', label: 'Mean lifespan (days)', type: 'int', default: 700, min: 200, max: 1200, step: 10 },
     { key: 'crowdRadius', label: 'Social radius', type: 'range', default: 10, min: 3, max: 30, step: 1, help: 'Distance within which other mice count as crowding.' },
     { key: 'crowdTolerance', label: 'Crowd tolerance', type: 'int', default: 7, min: 1, max: 40, step: 1, help: 'Neighbours a mouse tolerates before stress accrues.' },
@@ -251,13 +302,18 @@ export const universe25: ProjectSpec<Universe25State> = {
     const baseFertility = num(params, 'fertility');
     const sink = num(params, 'sinkStrength');
     const lifespan = num(params, 'lifespan');
+    const socialPull = num(params, 'socialPull');
+    // Mice sense and steer toward each other from farther than they "crowd",
+    // so a dispersed group can still coalesce. This is the ingredient that lets
+    // the sink form independent of walls.
+    const perception = radius * 2.5;
 
     const breedStart = 45; // days
     const breedEnd = 460; // female fertility ends (days)
     const birthInterval = 30; // min days between litters
 
-    // Build the spatial index for this tick.
-    const hash = new SpatialHash(arena, radius);
+    // Build the spatial index for this tick, sized to the widest query radius.
+    const hash = new SpatialHash(arena, perception);
     for (const m of state.mice) hash.insert(m);
 
     const survivors: Mouse[] = [];
@@ -275,11 +331,37 @@ export const universe25: ProjectSpec<Universe25State> = {
       m.stress += excess * 0.05 - 0.02;
       if (m.stress < 0) m.stress = 0;
 
-      // --- movement: wander with mild social attraction (clustering) ----
-      // Calhoun observed mice pooling together despite ample empty space.
+      // --- movement: random wander + voluntary social attraction --------
+      // Calhoun observed mice pooling together despite ample empty space: they
+      // gathered into a few pens while others sat empty. `socialPull` steers
+      // each mouse toward the local centre of mass of its perceived neighbours,
+      // so crowding becomes something the mice do to themselves — the sink can
+      // then emerge no matter how large the enclosure is.
       m.vx += rng.range(-0.5, 0.5);
       m.vy += rng.range(-0.5, 0.5);
-      // gentle pull toward centre of mass of nearby mice via velocity damping
+      if (socialPull > 0) {
+        // Cohesion: steer toward the local centre of mass (they seek company).
+        const c = hash.centroidNear(m.x, m.y, perception, m.id);
+        if (c.count > 0) {
+          const dx = c.cx - m.x;
+          const dy = c.cy - m.y;
+          const d = Math.hypot(dx, dy) || 1;
+          m.vx += (dx / d) * socialPull * 0.5;
+          m.vy += (dy / d) * socialPull * 0.5;
+        }
+        // Separation: bodies can't overlap, so push apart at very short range.
+        // Cohesion + separation makes a packed colony of finite density that
+        // GROWS with population — rather than a zero-dimensional knot — so the
+        // sink unfolds over time as the colony swells, at any enclosure size.
+        const near = hash.centroidNear(m.x, m.y, PERSONAL_SPACE, m.id);
+        if (near.count > 0) {
+          const dx = m.x - near.cx;
+          const dy = m.y - near.cy;
+          const d = Math.hypot(dx, dy) || 0.001;
+          m.vx += (dx / d) * SEPARATION;
+          m.vy += (dy / d) * SEPARATION;
+        }
+      }
       const speed = Math.hypot(m.vx, m.vy) || 1;
       const maxSpeed = 1.5;
       if (speed > maxSpeed) {

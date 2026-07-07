@@ -50,6 +50,29 @@ rules, not scripted:
 These reproduce Calhoun's four phases: Strive → Exploit → Stagnation → Death.
 Every constant is a slider, so you can explore the model, not just replay it.
 
+### Is the collapse spatial or social?
+
+Calhoun's central claim was that the behavioral sink is driven by **social**
+crowding, not lack of physical space — the mice voluntarily pile into a few pens
+while others sit empty. The **Social pull** parameter models exactly that: how
+strongly a mouse steers toward its neighbours (cohesion + short-range
+separation, so they pack at finite density instead of collapsing to a point).
+
+Run [`node scripts/experiment-space.mjs`](scripts/experiment-space.mjs) to sweep
+enclosure size with pull off vs. on:
+
+- **Social pull = 0** (pure random walk): the outcome depends entirely on space.
+  Small pens hit the sink; a big pen supports tens of thousands before crashing;
+  a *huge* pen makes the colony **fizzle out** — the mice disperse and can't find
+  mates (an Allee effect). Space is the control variable.
+- **Social pull > 0** (voluntary aggregation): the colony collapses to extinction
+  at **every** enclosure size on nearly the same timeline — from 260 units to
+  4000. The mice crowd themselves regardless of empty space. This is Calhoun's
+  point, reproduced: **infinite space does not prevent the collapse.**
+
+Curiosity inspired by this post-
+https://www.reddit.com/r/cellular_automata/comments/1ungluy/comment/ovpodcm/?context=1
+
 ## Adding a project
 
 1. Create `src/projects/<id>/index.ts` exporting a `ProjectSpec`.
