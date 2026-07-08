@@ -1,8 +1,8 @@
 {
   "name": "automata",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A general-purpose workbench for building, running, and observing cellular automata and agent-based models. Runs as an Electron app or standalone on the web.",
-  "author": "Sygnal",
+  "author": "Michael Wells <mike@aaic.nz>",
   "license": "MIT",
   "type": "module",
   "main": "dist-electron/main.cjs",

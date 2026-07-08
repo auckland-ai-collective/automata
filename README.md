@@ -98,3 +98,7 @@ For the standalone single-automaton page, open `/standalone.html` on the dev
 server or in the built `dist/`.
 
 > Note: the dev server is not started for you — run `npm run dev` yourself.
+
+## License
+
+MIT © [Michael Wells](mailto:mike@aaic.nz). See [LICENSE](LICENSE).
