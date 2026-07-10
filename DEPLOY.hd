@@ -1,0 +1,7 @@
+---
+id: 3rKuKMkFXlOfPjjBxGjiYF
+version: 1
+---
+
+<p></p><p></p><p></p><p></p><pre><code class="language-bash">npm run build
+npx wrangler pages deploy dist</code></pre><p></p>

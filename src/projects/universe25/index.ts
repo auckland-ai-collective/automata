@@ -471,7 +471,12 @@ export const universe25: ProjectSpec<Universe25State> = {
 
     if (survivors.length > state.peak) {
       state.peak = survivors.length;
-      state.generationOfPeak = Math.max(...survivors.map((m) => m.generation));
+      // Plain loop, not Math.max(...map()): spreading a tens-of-thousands-element
+      // array as call arguments overflows the stack (a dispersing colony in a
+      // large enclosure can reach that size).
+      let maxGen = 0;
+      for (const m of survivors) if (m.generation > maxGen) maxGen = m.generation;
+      state.generationOfPeak = maxGen;
     }
 
     state.phase = derivePhase(state, tick);
