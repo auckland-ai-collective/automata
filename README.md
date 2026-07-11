@@ -24,10 +24,16 @@ src/
     engine.ts   tick loop, seeded RNG, stat history, lifecycle events
     rng.ts      deterministic seedable PRNG (reproducible runs)
     grid.ts     grid + neighbour helpers for cellular automata
+  core/
+    field.ts    FloatField + colormap blit for reaction-diffusion / PDEs
   projects/     one folder per simulation
-    conway/     Conway's Game of Life        (grid CA)
-    wireworld/  Wireworld electron loop       (grid CA)
     universe25/ Calhoun's mouse utopia        (agent-based)
+    boids/      Reynolds flocking             (agent-based)
+    schelling/  segregation model             (agent-on-grid)
+    langton/    Langton's Ant / turmite       (grid + moving head)
+    grayscott/  reaction-diffusion patterns   (float grid)
+    conway/     Conway's Game of Life         (grid CA)
+    wireworld/  Wireworld electron loop        (grid CA)
     registry.ts the list of available projects
   ui/           React control panel + canvas + live charts
   standalone.ts run a single project on a bare page, no framework
